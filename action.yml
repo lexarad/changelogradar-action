@@ -1,0 +1,78 @@
+name: ChangelogRadar alerts
+description: Verified breaking changes, deprecations and pricing changes from official AI changelogs, posted to Slack, Discord, Teams or a webhook.
+author: ChangelogRadar
+branding:
+  icon: radio
+  color: blue
+
+inputs:
+  products:
+    description: Comma-separated product slugs to watch (claude-code, claude-platform, openai-api, cursor, github-copilot, gemini-api, mistral-ai, devin-desktop, vs-code, cohere), or * for all.
+    default: "*"
+  types:
+    description: Comma-separated change types to send (breaking, deprecated, pricing, new-capability).
+    default: breaking,deprecated
+  slack-webhook:
+    description: Slack incoming webhook URL. Pass it from a secret.
+    default: ""
+  discord-webhook:
+    description: Discord webhook URL. Pass it from a secret.
+    default: ""
+  teams-webhook:
+    description: Microsoft Teams Workflows webhook URL ("Send webhook alerts to a channel"). Pass it from a secret.
+    default: ""
+  webhook-url:
+    description: Your own https endpoint. Receives JSON with every new change.
+    default: ""
+  webhook-secret:
+    description: Optional secret. Each webhook request then carries X-ChangelogRadar-Signature (HMAC-SHA256 of "timestamp.body").
+    default: ""
+  first-run:
+    description: latest = send the 3 latest matching changes on the first run as a check; quiet = send nothing.
+    default: latest
+  max-new:
+    description: More new changes than this in one run is treated as a fault; they are marked as seen and not sent.
+    default: "100"
+  dry-run:
+    description: true = print the messages instead of sending them.
+    default: "false"
+  source:
+    description: Where the verified changes are read from.
+    default: https://changelogradar.vercel.app/data/changes.json
+
+runs:
+  using: composite
+  steps:
+    - name: Remember what was already sent
+      uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+      with:
+        path: ${{ runner.temp }}/changelogradar
+        key: changelogradar-${{ github.workflow }}-${{ github.job }}-${{ github.run_id }}
+        restore-keys: changelogradar-${{ github.workflow }}-${{ github.job }}-
+    - name: Send new changes
+      shell: bash
+      env:
+        SLACK_WEBHOOK_URL: ${{ inputs.slack-webhook }}
+        DISCORD_WEBHOOK_URL: ${{ inputs.discord-webhook }}
+        TEAMS_WEBHOOK_URL: ${{ inputs.teams-webhook }}
+        WEBHOOK_URL: ${{ inputs.webhook-url }}
+        WEBHOOK_SECRET: ${{ inputs.webhook-secret }}
+        CR_PRODUCTS: ${{ inputs.products }}
+        CR_TYPES: ${{ inputs.types }}
+        CR_FIRST_RUN: ${{ inputs.first-run }}
+        CR_DRY_RUN: ${{ inputs.dry-run }}
+        CR_MAX_NEW: ${{ inputs.max-new }}
+        CR_SOURCE: ${{ inputs.source }}
+        CR_STATE: ${{ runner.temp }}/changelogradar/state.json
+      run: |
+        mkdir -p "$(dirname "$CR_STATE")"  # the cache step needs the folder even after a dry run
+        dry=""
+        if [ "$CR_DRY_RUN" = "true" ]; then dry="--dry-run"; fi
+        python3 "$GITHUB_ACTION_PATH/changelogradar_alert.py" instant --source "$CR_SOURCE" --state "$CR_STATE" \
+          --products "$CR_PRODUCTS" --types "$CR_TYPES" --first-run "$CR_FIRST_RUN" --max-new "$CR_MAX_NEW" $dry
+    - name: Keep the memory for the next run
+      if: always()
+      uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+      with:
+        path: ${{ runner.temp }}/changelogradar
+        key: changelogradar-${{ github.workflow }}-${{ github.job }}-${{ github.run_id }}
