@@ -1,6 +1,6 @@
 # ChangelogRadar alerts — GitHub Action
 
-Verified breaking changes, deprecations and pricing changes from the official changelogs of Claude, OpenAI, Cursor, GitHub Copilot, Gemini, Mistral, Devin, VS Code and Cohere, posted to **Slack, Discord, Microsoft Teams or your own webhook**. Every change was read by a person at [ChangelogRadar](https://changelogradar.vercel.app/) and links to the vendor's official source.
+Verified breaking changes, deprecations and pricing changes from the official changelogs of Claude, OpenAI, Cursor, GitHub Copilot, Gemini, Mistral, Devin, VS Code and Cohere, posted to **Slack, Discord, Microsoft Teams or your own webhook**. Every change is checked against the vendor's official page at [ChangelogRadar](https://changelogradar.vercel.app/) and links to it.
 
 Free. It runs in your repository with your own secrets; ChangelogRadar never sees your webhook.
 
